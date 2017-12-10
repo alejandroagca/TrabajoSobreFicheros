@@ -8,5 +8,5 @@ Una vez descargadas las rutas a las imagenes estas se descargan y se establecen 
   
 Las imagenes y las frases son mostradas de manera rotatoria cada X tiempo. El tiempo es indicado mediante un archivo intervalo.txt almacenado en la carpeta /raw del proyecto.
 
-* Posibles mejoras
-Optimizar la subida del fichero errores.txt.
+# Posibles mejoras
+* Optimizar la subida del fichero errores.txt.
