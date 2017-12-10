@@ -51,6 +51,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
     private Memoria miMemoria;
     private File fichero;
     private final String WEB = "http://alumno.mobi/~alumno/superior/aguilar/subidaErrores.php";
+    private final String ERROR = "http://alumno.mobi/~alumno/superior/aguilar/trabajoFicheros/errores.txt";
     private final String NOMBREFICHERO = "errores.txt";
 
     @Override
@@ -75,7 +76,8 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
             intervalo = obtenerIntervalo();
 
             //Si el intervalo es diferente de 0  se crean los contadores para rotar las frases y las imagenes
-            if (intervalo != 0) {
+            if (intervalo > 0) {
+                descargaFicheroErrores(ERROR);
                 contadorImagenes = new MiContador(intervalo * 1000, (long)1000.0);
                 contadorFrases = new MiContador(intervalo*1000, (long)1000.0);
                 //Se cancelan los contadores para que en el caso que esten iniciados con anterioridad no se solapen los tiempos
@@ -86,7 +88,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                 descargaFicheroFrases(edtFrases.getText().toString());
             }
             else {
-                /*En el caso de que el intervalo sea 0 es que ha ocurrido algun error en el fichero. Por lo tanto se suben
+                /*En el caso de que el intervalo sea 0 o menor es que ha ocurrido algun error en el fichero. Por lo tanto se suben
                 los errores al servidor*/
                 subirErrores(fichero);
             }
@@ -242,6 +244,56 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         });
     }
 
+    private void descargaFicheroErrores(String url)
+    {
+        fichero.delete();
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.get(url, new FileAsyncHttpResponseHandler(/* Context */ this) {
+            ProgressDialog pd;
+
+            @Override
+            public void onStart() {
+                pd = new ProgressDialog(FicherosActivity.this);
+                pd.setTitle("Por favor espere...");
+                pd.setMessage("AsyncHttpResponseHadler está en progreso");
+                pd.setIndeterminate(false);
+                pd.setCancelable(false);
+                pd.show();
+            }
+
+            //En caso de dar error la descargar del fichero, se añade el error al fichero errores.txt y se sube a la web.
+            @Override
+            public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
+                Toast.makeText(FicherosActivity.this, "Ha ocurrido un error en la descargar del fichero errores.txt", Toast.LENGTH_SHORT).show();
+            }
+
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, File file) {
+                Toast.makeText(FicherosActivity.this, "El fichero errores.txt se ha descargado con exito", Toast.LENGTH_SHORT).show();
+                FileInputStream fis;
+                try {
+                    fis = new FileInputStream(file);
+                    BufferedReader in = new BufferedReader(new InputStreamReader(fis));
+                    String linea;
+                    while ((linea = in.readLine()) != null) {
+                        miMemoria.escribirInterna(NOMBREFICHERO, linea, true, "UTF-8");
+                    }
+                    in.close();
+                    fis.close();
+
+                }
+                catch(Exception e){
+                    }
+            }
+
+            @Override
+            public void onFinish() {
+                pd.dismiss();
+            }
+        });
+    }
+
     /*Metodo que obtiene el intervalo de tiempo con el que se intercambiaran las imagenes del archivo intervalo.txt ubicado en
     res/raw*/
     private long obtenerIntervalo(){
@@ -255,9 +307,13 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
             String linea;
             while ((linea = in.readLine()) != null) {
                 elIntervalo = Long.parseLong(linea.toString());
+                if (elIntervalo <= 0){
+                    throw new ExcepcionNegativo();
+                }
             }
             in.close();
             is.close();
+
             return elIntervalo;
 
             //En el caso en el que ocurra un error en la obtencion del intervalo se recoge y se añade al fichero errores.txt
@@ -272,6 +328,11 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         } catch (NumberFormatException e) {
             if (miMemoria.escribirInterna(NOMBREFICHERO, "El fichero intervalo.txt tiene que contener un valor long. Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
                 Toast.makeText(this, "El fichero intervalo.txt tiene que contener un valor long", Toast.LENGTH_SHORT).show();
+            }
+        }
+        catch (ExcepcionNegativo e){
+            if (miMemoria.escribirInterna(NOMBREFICHERO, "El intervalo debe ser mayor que 0. Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
+                Toast.makeText(this, "El intervalo debe ser mayor que 0", Toast.LENGTH_SHORT).show();
             }
         }
         catch (Exception e){
@@ -369,5 +430,12 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                     progreso.dismiss();
                 }
             });
+    }
+
+    //Excepcion que trata el caso de que el intervalo sea 0 o negativo.
+    public class ExcepcionNegativo extends Exception {
+        public ExcepcionNegativo() {
+            super();
+        }
     }
 }
