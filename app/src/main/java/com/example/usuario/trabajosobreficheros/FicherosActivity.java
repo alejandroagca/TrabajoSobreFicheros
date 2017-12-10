@@ -49,7 +49,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
     private MiContador contadorImagenes;
     private MiContador contadorFrases;
     private Memoria miMemoria;
-    File fichero;
+    private File fichero;
     private final String WEB = "http://alumno.mobi/~alumno/superior/aguilar/subidaErrores.php";
     private final String NOMBREFICHERO = "errores.txt";
 
@@ -65,30 +65,40 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         txvFrases = (TextView) findViewById(R.id.txvFrases);
         btnDescargar = (Button) findViewById(R.id.btnDescargar);
         btnDescargar.setOnClickListener(this);
-        contadorImagenes = new MiContador(intervalo * 1000, (long)1000.0);
-        contadorFrases = new MiContador(intervalo*1000, (long)1000.0);
+        frases = new ArrayList<String>();
+        rutasAImagenes = new ArrayList<String>();
     }
-
     @Override
     public void onClick(View v) {
         if (v == btnDescargar) {
+            //Cuando se pulsa el boton descargar se establece el intervalo de tiempo.
             intervalo = obtenerIntervalo();
+
+            //Si el intervalo es diferente de 0  se crean los contadores para rotar las frases y las imagenes
             if (intervalo != 0) {
+                contadorImagenes = new MiContador(intervalo * 1000, (long)1000.0);
+                contadorFrases = new MiContador(intervalo*1000, (long)1000.0);
+                //Se cancelan los contadores para que en el caso que esten iniciados con anterioridad no se solapen los tiempos
                 contadorImagenes.cancel();
                 contadorFrases.cancel();
+                //Se llama a los metodos para descargar los ficheros que contienen las imagenes y las frases
                 descargaFicheroImagenes(edtImagenes.getText().toString());
                 descargaFicheroFrases(edtFrases.getText().toString());
             }
             else {
+                /*En el caso de que el intervalo sea 0 es que ha ocurrido algun error en el fichero. Por lo tanto se suben
+                los errores al servidor*/
                 subirErrores(fichero);
             }
         }
     }
 
+    //Metodo que descarga el fichero que contiene las rutas de las imagenes
     private void descargaFicheroImagenes(final String url)
     {
+        fecha = new Date();
         turnoImagen = 0;
-        rutasAImagenes = new ArrayList<String>();
+        rutasAImagenes.clear();
         AsyncHttpClient client = new AsyncHttpClient();
         client.get(url, new FileAsyncHttpResponseHandler(/* Context */ this) {
             ProgressDialog pd;
@@ -103,9 +113,9 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                 pd.show();
             }
 
+            //En caso de dar error la descargar del fichero, se añade el error al fichero errores.txt y se sube a la web.
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                fecha = new Date();
                 if (miMemoria.escribirInterna(NOMBREFICHERO, "Error: " + statusCode + ". Se ha producido un error en la descarga del fichero de las imagenes: " + url +"  Fecha y hora de acceso: " + fecha, true, "UTF-8" )) {
                     Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las imagenes", Toast.LENGTH_SHORT).show();
                     imgImagenes.setImageResource(R.drawable.error);
@@ -130,14 +140,22 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                     fis.close();
                     establecerImagen(rutasAImagenes.get(turnoImagen++));
                     contadorImagenes.start();
-
+                //Se recogen los errores que puede ocurrir en el fichero descargado y se suben al servior
                 } catch (FileNotFoundException e) {
-                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero de imagenes descargado pero no encontrado", true, "UTF-8")){
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero de imagenes descargado pero no encontrado. Fecha y hora de acceso: " + fecha, true, "UTF-8")){
                         Toast.makeText(FicherosActivity.this, "Fichero de imagenes descargado pero no encontrado", Toast.LENGTH_SHORT).show();
+                        subirErrores(fichero);
                     }
                 } catch (IOException e) {
-                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero de las imagenes", true, "UTF-8")){
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero de las imagenes. Fecha y hora de acceso: " + fecha, true, "UTF-8")){
                         Toast.makeText(FicherosActivity.this, "Error de E/S en el fichero de las imagenes", Toast.LENGTH_SHORT).show();
+                        subirErrores(fichero);
+                    }
+                }
+                catch (Exception e){
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, e.getMessage() + ". fecha y hora de acceso: " + fecha, true, "UTF-8")){
+                        Toast.makeText(FicherosActivity.this,e.getMessage(), Toast.LENGTH_SHORT).show();
+                        subirErrores(fichero);
                     }
                 }
             }
@@ -149,10 +167,12 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         });
     }
 
+    //Metodo que descarga el fichero que contiene las frases
     private void descargaFicheroFrases(final String url)
     {
+        fecha = new Date();
         turnoFrase = 0;
-        frases = new ArrayList<String>();
+        frases.clear();
         AsyncHttpClient client = new AsyncHttpClient();
         client.get(url, new FileAsyncHttpResponseHandler(/* Context */ this) {
             ProgressDialog pd;
@@ -167,9 +187,9 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                 pd.show();
             }
 
+            //En caso de dar error la descargar del fichero, se añade el error al fichero errores.txt y se sube a la web.
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                fecha = new Date();
                 if (miMemoria.escribirInterna(NOMBREFICHERO, "Error: " + statusCode + ". Se ha producido un error en la descarga del fichero de las frases: " + url + "  Fecha y hora de acceso: " + fecha, true, "UTF-8" )) {
                     Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las frases", Toast.LENGTH_SHORT).show();
                     establecerFrase("");
@@ -195,13 +215,22 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                     establecerFrase(frases.get(turnoFrase++));
                     contadorFrases.start();
 
+                    //Se recogen los errores que puede ocurrir en el fichero descargado y se suben al servior
                 } catch (FileNotFoundException e) {
-                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero de frases descargado pero no encontrado", true, "UTF-8")){
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero de frases descargado pero no encontrado. Fecha y hora de acceso: " + fecha, true, "UTF-8")){
                         Toast.makeText(FicherosActivity.this, "Fichero de frases descargado pero no encontrado", Toast.LENGTH_SHORT).show();
+                        subirErrores(fichero);
                     }
                 } catch (IOException e) {
-                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero de las frases", true, "UTF-8")){
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero de las frases. Fecha y hora de acceso: " + fecha, true, "UTF-8")){
                         Toast.makeText(FicherosActivity.this, "Error de E/S en el fichero de las frases", Toast.LENGTH_SHORT).show();
+                        subirErrores(fichero);
+                    }
+                }
+                catch(Exception e){
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, e.getMessage() + ". Fecha y hora de acceso: " + fecha, true, "UTF-8")){
+                        Toast.makeText(FicherosActivity.this, "Error de E/S en el fichero de las frases", Toast.LENGTH_SHORT).show();
+                        subirErrores(fichero);
                     }
                 }
             }
@@ -213,6 +242,8 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         });
     }
 
+    /*Metodo que obtiene el intervalo de tiempo con el que se intercambiaran las imagenes del archivo intervalo.txt ubicado en
+    res/raw*/
     private long obtenerIntervalo(){
         fecha = new Date();
         long elIntervalo = 0;
@@ -228,6 +259,8 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
             in.close();
             is.close();
             return elIntervalo;
+
+            //En el caso en el que ocurra un error en la obtencion del intervalo se recoge y se añade al fichero errores.txt
         } catch (FileNotFoundException e) {
             if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero intervalo.txt no encontrado. Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
                 Toast.makeText(this, "Fichero intervalo.txt no encontrado", Toast.LENGTH_SHORT).show();
@@ -249,6 +282,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         return elIntervalo;
     }
 
+    //Clase que extiende de CountDownTimer para poder sobrescribir el metodo onFinish y poder lanzar el contador cuando finalice
     public class MiContador extends CountDownTimer {
         public MiContador(long startTime, long interval) {
             super(startTime, interval);
@@ -260,6 +294,8 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
         @Override
         public void onFinish() {
+            /*Sobrescribo el metodo onFinish para que cuando acabe alguno de los contadores se comprueba cual es y
+            se vuelve a lanzar. Con esto un contador puede funcionar aunque el otro haya dado error en la descargar de ficheros*/
             if (this.equals(contadorImagenes)) {
                 if (turnoImagen == rutasAImagenes.size()) {
                     turnoImagen = 0;
@@ -278,11 +314,12 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         }
     }
 
-
+    //Metodo que cambia la frase del txvFrases.
     private void establecerFrase(String frase){
         txvFrases.setText(frase);
     }
 
+    //Metodo que cambia la imagen del imgImagenes mediante Picasso
     private void establecerImagen(String ruta) {
         OkHttpClient client = new OkHttpClient();
         Picasso picasso = new Picasso.Builder(this)
@@ -295,6 +332,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                 .into(imgImagenes);
     }
 
+    //Metodo que sube el archivo errores.txt a la carpeta trabajoFicheros del servidor alumno.mobi
     private void subirErrores(File myFile) {
         final ProgressDialog progreso = new ProgressDialog(FicherosActivity.this);
         Boolean existe = true;
