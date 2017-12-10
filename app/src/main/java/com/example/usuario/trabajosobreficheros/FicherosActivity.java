@@ -264,7 +264,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
             //En caso de dar error la descargar del fichero, se añade el error al fichero errores.txt y se sube a la web.
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                Toast.makeText(FicherosActivity.this, "Ha ocurrido un error en la descargar del fichero errores.txt", Toast.LENGTH_SHORT).show();
+                Toast.makeText(FicherosActivity.this, "Ha ocurrido un error en la descargar del fichero errores.txt. Se creará un nuevo fichero de errores.", Toast.LENGTH_SHORT).show();
             }
 
 
