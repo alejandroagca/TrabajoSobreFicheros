@@ -45,17 +45,22 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
     private int turnoFrase;
     private MiContador contadorImagenes;
     private MiContador contadorFrases;
+    private Memoria miMemoria;
+    File fichero;
     private final String WEB = "http://alumno.mobi/~alumno/superior/aguilar/subidaErrores.php";
+    private final String NOMBREFICHERO = "errores.txt";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_ficheros);
+        miMemoria = new Memoria(getApplicationContext());
+        fichero = new File(getApplicationContext().getFilesDir(), NOMBREFICHERO);
         edtImagenes = (EditText) findViewById(R.id.edtImagenes);
         edtFrases = (EditText) findViewById(R.id.edtFrases);
         imgImagenes = (ImageView) findViewById(R.id.imgImagenes);
         txvFrases = (TextView) findViewById(R.id.txvFrases);
-        obtenerIntervalo();
+        intervalo = obtenerIntervalo();
         btnDescargar = (Button) findViewById(R.id.btnDescargar);
         btnDescargar.setOnClickListener(this);
         contadorImagenes = new MiContador(intervalo * 1000, (long)1000.0);
@@ -67,6 +72,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         if (v == btnDescargar) {
             contadorImagenes.cancel();
             contadorFrases.cancel();
+            fichero.delete();
             descargaFicheroImagenes(edtImagenes.getText().toString());
             descargaFicheroFrases(edtFrases.getText().toString());
         }
@@ -92,7 +98,9 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las imagenes", Toast.LENGTH_SHORT).show();
+                if (miMemoria.escribirInterna("errores.txt", "Se ha producido un error en la descarga del fichero de las imagenes", true, "UTF-8" )) {
+                    Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las imagenes", Toast.LENGTH_SHORT).show();
+                }
             }
 
 
@@ -147,7 +155,9 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las frases", Toast.LENGTH_SHORT).show();
+                if (miMemoria.escribirInterna("errores.txt", "Se ha producido un error en la descarga del fichero de las imagenes", true, "UTF-8" )) {
+                    Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las frases", Toast.LENGTH_SHORT).show();
+                }
             }
 
 
@@ -182,25 +192,26 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         });
     }
 
-    private void obtenerIntervalo(){
+    private long obtenerIntervalo(){
+        long elIntervalo = 0;
         InputStream is;
-
         try {
             is = getResources().openRawResource(R.raw.intervalo);
             BufferedReader in = new BufferedReader(new InputStreamReader(is));
 
             String linea;
             while ((linea = in.readLine()) != null) {
-                intervalo = Long.parseLong(linea.toString());
+                elIntervalo = Long.parseLong(linea.toString());
             }
             in.close();
             is.close();
-
+            return elIntervalo;
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return elIntervalo;
     }
 
     public class MiContador extends CountDownTimer {
@@ -249,11 +260,9 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                 .into(imgImagenes);
     }
 
-    private void subirErrores(String fichero) {
+    private void subirErrores(File myFile) {
         final ProgressDialog progreso = new ProgressDialog(FicherosActivity.this);
-        File myFile;
         Boolean existe = true;
-        myFile = new File(fichero);
         RequestParams params = new RequestParams();
         try {
             params.put("fileToUpload", myFile);
