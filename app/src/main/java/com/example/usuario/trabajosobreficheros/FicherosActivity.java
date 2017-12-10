@@ -27,12 +27,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Date;
 
 import cz.msebera.android.httpclient.Header;
 import okhttp3.OkHttpClient;
 
 public class FicherosActivity extends AppCompatActivity implements View.OnClickListener {
 
+
+    private Date fecha;
     private EditText edtImagenes;
     private EditText edtFrases;
     private ImageView imgImagenes;
@@ -60,7 +63,6 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         edtFrases = (EditText) findViewById(R.id.edtFrases);
         imgImagenes = (ImageView) findViewById(R.id.imgImagenes);
         txvFrases = (TextView) findViewById(R.id.txvFrases);
-        intervalo = obtenerIntervalo();
         btnDescargar = (Button) findViewById(R.id.btnDescargar);
         btnDescargar.setOnClickListener(this);
         contadorImagenes = new MiContador(intervalo * 1000, (long)1000.0);
@@ -70,15 +72,20 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
     @Override
     public void onClick(View v) {
         if (v == btnDescargar) {
-            contadorImagenes.cancel();
-            contadorFrases.cancel();
-            fichero.delete();
-            descargaFicheroImagenes(edtImagenes.getText().toString());
-            descargaFicheroFrases(edtFrases.getText().toString());
+            intervalo = obtenerIntervalo();
+            if (intervalo != 0) {
+                contadorImagenes.cancel();
+                contadorFrases.cancel();
+                descargaFicheroImagenes(edtImagenes.getText().toString());
+                descargaFicheroFrases(edtFrases.getText().toString());
+            }
+            else {
+                subirErrores(fichero);
+            }
         }
     }
 
-    private void descargaFicheroImagenes(String url)
+    private void descargaFicheroImagenes(final String url)
     {
         turnoImagen = 0;
         rutasAImagenes = new ArrayList<String>();
@@ -98,9 +105,12 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                if (miMemoria.escribirInterna("errores.txt", "Se ha producido un error en la descarga del fichero de las imagenes", true, "UTF-8" )) {
+                fecha = new Date();
+                if (miMemoria.escribirInterna(NOMBREFICHERO, "Error: " + statusCode + ". Se ha producido un error en la descarga del fichero de las imagenes: " + url +"  Fecha y hora de acceso: " + fecha, true, "UTF-8" )) {
                     Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las imagenes", Toast.LENGTH_SHORT).show();
+                    imgImagenes.setImageResource(R.drawable.error);
                 }
+                subirErrores(fichero);
             }
 
 
@@ -122,9 +132,13 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                     contadorImagenes.start();
 
                 } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero de imagenes descargado pero no encontrado", true, "UTF-8")){
+                        Toast.makeText(FicherosActivity.this, "Fichero de imagenes descargado pero no encontrado", Toast.LENGTH_SHORT).show();
+                    }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero de las imagenes", true, "UTF-8")){
+                        Toast.makeText(FicherosActivity.this, "Error de E/S en el fichero de las imagenes", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
@@ -135,7 +149,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         });
     }
 
-    private void descargaFicheroFrases(String url)
+    private void descargaFicheroFrases(final String url)
     {
         turnoFrase = 0;
         frases = new ArrayList<String>();
@@ -155,9 +169,12 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
             @Override
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
-                if (miMemoria.escribirInterna("errores.txt", "Se ha producido un error en la descarga del fichero de las imagenes", true, "UTF-8" )) {
+                fecha = new Date();
+                if (miMemoria.escribirInterna(NOMBREFICHERO, "Error: " + statusCode + ". Se ha producido un error en la descarga del fichero de las frases: " + url + "  Fecha y hora de acceso: " + fecha, true, "UTF-8" )) {
                     Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las frases", Toast.LENGTH_SHORT).show();
+                    establecerFrase("");
                 }
+                subirErrores(fichero);
             }
 
 
@@ -179,9 +196,13 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
                     contadorFrases.start();
 
                 } catch (FileNotFoundException e) {
-                    e.printStackTrace();
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero de frases descargado pero no encontrado", true, "UTF-8")){
+                        Toast.makeText(FicherosActivity.this, "Fichero de frases descargado pero no encontrado", Toast.LENGTH_SHORT).show();
+                    }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero de las frases", true, "UTF-8")){
+                        Toast.makeText(FicherosActivity.this, "Error de E/S en el fichero de las frases", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
@@ -193,6 +214,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
     }
 
     private long obtenerIntervalo(){
+        fecha = new Date();
         long elIntervalo = 0;
         InputStream is;
         try {
@@ -207,9 +229,22 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
             is.close();
             return elIntervalo;
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            if (miMemoria.escribirInterna(NOMBREFICHERO, "Fichero intervalo.txt no encontrado. Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
+                Toast.makeText(this, "Fichero intervalo.txt no encontrado", Toast.LENGTH_SHORT).show();
+            }
         } catch (IOException e) {
-            e.printStackTrace();
+            if (miMemoria.escribirInterna(NOMBREFICHERO, "Error de E/S en el fichero intervalo.txt. Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
+                Toast.makeText(this, "Error de E/S en el fichero intervalo.txt", Toast.LENGTH_SHORT).show();
+            }
+        } catch (NumberFormatException e) {
+            if (miMemoria.escribirInterna(NOMBREFICHERO, "El fichero intervalo.txt tiene que contener un valor long. Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
+                Toast.makeText(this, "El fichero intervalo.txt tiene que contener un valor long", Toast.LENGTH_SHORT).show();
+            }
+        }
+        catch (Exception e){
+            if (miMemoria.escribirInterna(NOMBREFICHERO, e.getMessage() + ". Fecha y hora de acceso: " + fecha, true, "UTF-8")) {
+                Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         }
         return elIntervalo;
     }
