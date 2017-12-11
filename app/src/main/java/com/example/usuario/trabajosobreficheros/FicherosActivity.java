@@ -53,6 +53,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
     private final String WEB = "http://alumno.mobi/~alumno/superior/aguilar/subidaErrores.php";
     private final String ERROR = "http://alumno.mobi/~alumno/superior/aguilar/trabajoFicheros/errores.txt";
     private final String NOMBREFICHERO = "errores.txt";
+    Picasso picasso;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +69,10 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         btnDescargar.setOnClickListener(this);
         frases = new ArrayList<String>();
         rutasAImagenes = new ArrayList<String>();
+        OkHttpClient client = new OkHttpClient();
+        picasso = new Picasso.Builder(this)
+                .downloader(new OkHttp3Downloader(client))
+                .build();
     }
     @Override
     public void onClick(View v) {
@@ -382,10 +387,6 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
     //Metodo que cambia la imagen del imgImagenes mediante Picasso
     private void establecerImagen(String ruta) {
-        OkHttpClient client = new OkHttpClient();
-        Picasso picasso = new Picasso.Builder(this)
-                .downloader(new OkHttp3Downloader(client))
-                .build();
 
         picasso.with(this).load(ruta)
                 .placeholder(R.drawable.placeholder)
