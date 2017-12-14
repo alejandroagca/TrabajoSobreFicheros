@@ -199,7 +199,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
             public void onFailure(int statusCode, Header[] headers, Throwable throwable, File file) {
                 if (miMemoria.escribirInterna(NOMBREFICHERO, "Error: " + statusCode + ". Se ha producido un error en la descarga del fichero de las frases: " + url + "  Fecha y hora de acceso: " + fecha, true, "UTF-8" )) {
                     Toast.makeText(FicherosActivity.this, "Se ha producido un error en la descarga del fichero de las frases", Toast.LENGTH_SHORT).show();
-                    establecerFrase("");
+                    establecerFrase("No se han podido descargar las frases");
                 }
                 subirErrores(fichero);
             }
