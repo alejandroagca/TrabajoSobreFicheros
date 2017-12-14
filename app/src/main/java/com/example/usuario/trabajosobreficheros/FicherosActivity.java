@@ -73,6 +73,7 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
         picasso = new Picasso.Builder(this)
                 .downloader(new OkHttp3Downloader(client))
                 .build();
+        descargaFicheroErrores(ERROR);
     }
     @Override
     public void onClick(View v) {
@@ -82,7 +83,6 @@ public class FicherosActivity extends AppCompatActivity implements View.OnClickL
 
             //Si el intervalo es diferente de 0  se crean los contadores para rotar las frases y las imagenes
             if (intervalo > 0) {
-                descargaFicheroErrores(ERROR);
                 contadorImagenes = new MiContador(intervalo * 1000, (long)1000.0);
                 contadorFrases = new MiContador(intervalo*1000, (long)1000.0);
                 //Se cancelan los contadores para que en el caso que esten iniciados con anterioridad no se solapen los tiempos
